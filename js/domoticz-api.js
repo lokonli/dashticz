@@ -384,8 +384,8 @@ var Domoticz = (function () {
       console.log(' no result');
       return;
     }
-    var r = data.result[0];
-    var device = data.result[r];
+//    var r = data.result[0];
+    var device = data.result[0];
     var idx = device['idx'];
 
     if (device['Type'] === 'Group' || device['Type'] === 'Scene') {
@@ -498,6 +498,7 @@ var Domoticz = (function () {
     hold: hold,
     release: release,
     syncRequest: syncRequest,
+    setDevice: _setDevice
   };
 })();
 
