@@ -29,7 +29,7 @@ window.GoogleMapsCallback = function() {
             clickHandler: false,
             api: settings['gm_api'],
             width: 12,
-            height: '400px',
+//            height: '400px',
             aspectratio:0.5,
             containerClass: 'swiper-no-swiping',
             longitude: parseFloat(Domoticz.getAllDevices()['_settings'].Location.Longitude),

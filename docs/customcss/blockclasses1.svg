@@ -1,0 +1,26 @@
+<svg width="470" height="270" xmlns="http://www.w3.org/2000/svg">
+ <!-- Created with Method Draw - http://github.com/duopixel/Method-Draw/ -->
+
+ <g>
+  <title>background</title>
+  <rect fill="#fff" id="canvas_background" height="272" width="472" y="-1" x="-1"/>
+  <g display="none" id="canvasGrid">
+   <rect fill="url(#gridpattern)" stroke-width="0" y="1" x="1" height="600" width="800" id="svg_4"/>
+  </g>
+ </g>
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="#000" id="svg_1" height="252.000005" width="431.000008" y="10.799997" x="22.900007" fill="#FFF093"/>
+  <text style="cursor: text;" xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_2" y="34.8" x="26.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_block.dt_template0</text>
+  <rect id="svg_5" height="195.999989" width="135.000004" y="55.799998" x="51.900008" fill="#fff" stroke="#000"/>
+  <rect stroke="#000" id="svg_8" height="197.999982" width="236.000019" y="55.799998" x="199.900018" fill="#A8FFE9"/>
+  <rect stroke="#000" id="svg_3" height="34.999983" width="215.000016" y="96.800003" x="213.900017" fill="#fff"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_10" y="80.8" x="55.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_icon</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_11" y="81.8" x="203.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_col</text>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_7" y="116.8" x="219.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_title</text>
+  <rect stroke="#000" id="svg_6" height="34.999983" width="215.000016" y="211.800003" x="212.900017" fill="#fff"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_9" y="236.8" x="222.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_info</text>
+  <rect id="svg_12" height="69.999999" width="215.000016" y="136.800018" x="212.900017" fill="#fff" stroke="#000"/>
+  <text xml:space="preserve" text-anchor="start" font-family="Helvetica, Arial, sans-serif" font-size="24" id="svg_13" y="174.8" x="223.900002" stroke-width="0" stroke="#000" fill="#000000">.dt_content</text>
+ </g>
+</svg>

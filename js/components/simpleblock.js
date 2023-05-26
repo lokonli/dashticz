@@ -246,8 +246,7 @@ var DT_simpleblock = (function () {
 
   
   function renderSpotify(me) {
-    me.$mountPoint.html('');
-    getSpotify(me.mountPoint);
+    getSpotify(me);
   }
 
   function renderTrafficMap(me) {

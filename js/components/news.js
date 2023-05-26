@@ -73,8 +73,8 @@ var DT_news = {
           });
 
         templateEngine.load('news_row').then(function (template) {
-          $(me.mountPoint + ' .dt_state').html(template({ news: items }));
-          $(me.mountPoint + ' .col-icon').addClass('next');
+          $(me.mountPoint + ' .dt_content').html(template({ news: items }));
+          $(me.mountPoint + ' .dt_icon').addClass('next');
           $(me.mountPoint + ' #container').easyTicker({
             direction: 'up',
             easing: 'lineair',
@@ -97,7 +97,7 @@ var DT_news = {
 
           if (me.height) {
             /*set to fixed height*/
-            $(me.mountPoint + ' .dt_state').height(me.height);
+            $(me.mountPoint + ' .dt_content').height(me.height);
             return;
           }
 
@@ -121,7 +121,7 @@ var DT_news = {
                 var mh = $(this).height();
                 if (mh > maxHeight) {
                   maxHeight = mh;
-                  $(me.mountPoint + ' .dt_state').height(maxHeight);
+                  $(me.mountPoint + ' .dt_content').height(maxHeight);
                 }
               });
             });

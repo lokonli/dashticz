@@ -83,14 +83,14 @@ var DT_alarmmeldingen = {
           '</strong><br />' +
           '</li>';
       }
-      $(me.mountPoint + ' .dt_state').html(html);
+      $(me.mountPoint + ' .dt_content').html(html);
 
       if (
         typeof alarmobject.show_lastupdate !== 'undefined' &&
         alarmobject.show_lastupdate == true
       ) {
         var dt = new Date();
-        $(me.mountPoint + ' .dt_state').append(
+        $(me.mountPoint + ' .dt_info').html(
           '<em>' +
             language.misc.last_update +
             ': ' +

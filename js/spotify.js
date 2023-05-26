@@ -1,4 +1,5 @@
 /* global SpotifyWebApi getRandomInt Cookies URLToArray language settings infoMessage*/
+//# sourceURL=js/components/spotify.js
 var SpotifyModule = (function () {
   var CUR_URI = window.location.href.split('#');
   var REDIRECT_URI = CUR_URI[0];
@@ -7,10 +8,11 @@ var SpotifyModule = (function () {
   var userinfo;
   var spotifyApi = new SpotifyWebApi();
   var columndiv;
-  var spotVolume;
 
-  function _getSpotify(columndiv) {
-    var random = getRandomInt(1, 100000);
+  function _getSpotify(me) {
+    me.columndiv = $(me.mountPoint + ' .dt_block');
+
+    me.random = getRandomInt(1, 100000);
     if (
       typeof Cookies.get('spotifyToken') !== 'undefined' ||
       typeof CUR_URI[1] !== 'undefined'
@@ -22,27 +24,13 @@ var SpotifyModule = (function () {
       }
       accessToken = Cookies.get('spotifyToken');
       spotifyApi.setAccessToken(accessToken);
+      me.columndiv.addClass('spotify');
 
-      var html =
-        '<div data-id="spotify" class="col-xs-12 transbg containsspotify containsspotify' +
-        random +
-        '" style="padding:0px !important;">';
-      html += '<div id="current"></div>';
+      renderPlayer(me);
 
-      html +=
-        '<a class="change"  onclick="SpotifyModule.createPlaylistsDlg(' +
-        random +
-        ');">' +
-        language.misc.spotify_select_playlist +
-        ' &raquo;</a>';
-      html +=
-        '<select class="devices" onchange="SpotifyModule.changeDevice(this.value);"></select>';
-
-      html += '</div>';
-      $(columndiv).append(html);
-      _getMe();
+      _getMe(me);
       setInterval(function () {
-        _getData(columndiv, random);
+        _getData(me);
       }, 2000);
     } else if (!settings['spot_clientid']) {
       console.log('Enter your Spotify ClientID in CONFIG.JS');
@@ -57,7 +45,53 @@ var SpotifyModule = (function () {
     }
   }
 
-  function _getMe() {
+  function renderPlayer(me) {
+    var html = '';
+    html += '<div class="current_image">';
+    html += '<img />';
+    html += '</div>';
+    html += '<div class="dt_col">';
+    html += '<div class="current_info">';
+    html += '<div class="current_artist"></div>';
+    html += '<div class="current_track"></div>';
+    html += '<div class="current_album"></div>';
+
+    html += '<div class="buttons" style="display:none;">';
+    html += '<a class="spotpause" style="display:none;" action="Pause"><em class="fas fa-pause-circle fa-small"></em></a> ';
+    html += '<a class="spotplay" style="display:none;" action="Play"><em class="fas fa-play-circle fa-small"></em></a> ';
+    html += '<a action="Forward"><em class="fas fa-arrow-circle-right fa-small"></em></a>';
+    html += '&nbsp;&nbsp;';
+    html += '<a id="shuffle" class="shuffleoff" action="Shuffle"><em class="fas fa-random fa-small"></em></a> ';
+    html += '&nbsp;';
+    html += '<a action="VolumeDown"><em class="fas fa-minus-circle fa-small"></em></a>';
+    html += '&nbsp;';
+    html += '<a action="VolumeUp"><em class="fas fa-plus-circle fa-small"></em></a>';
+    html +='</div>';
+    html +=
+    '<a class="change">' +
+    language.misc.spotify_select_playlist +
+    ' &raquo;</a>';
+  html +=
+    '<select class="devices">...</select>';
+
+  html += '</div>';
+
+    html +='</div>';
+    me.columndiv.html(html);
+    me.$mountPoint.on('click', '[action]',function () {
+      _trackAction(me, $(this).attr('action'));	
+    });
+    
+    me.$mountPoint.on('click', '.change', function () {
+      _createPlaylistsDlg(me);
+    });
+    me.$mountPoint.find('.spotify select').on('change', function (event) {
+      _changeDevice(me, this.value);
+    });
+  
+  }
+
+  function _getMe(me) {
     spotifyApi.getMe(function (err, user) {
       if (!err) userinfo = user;
       else {
@@ -71,7 +105,7 @@ var SpotifyModule = (function () {
           return;
         }
         setTimeout(function () {
-          _getMe();
+          _getMe(me);
         }, 5000);
       }
     });
@@ -79,7 +113,7 @@ var SpotifyModule = (function () {
   // Todo: columndiv and rand currently are unused
 
   // eslint-disable-next-line no-unused-vars
-  function _getData(columndiv, rand) {
+  function _getData(me) {
     if ($('select.devices option').length === 0)
       $('select.devices').html(
         '<option>' + language.misc.spotify_select_device + '</option>'
@@ -95,13 +129,12 @@ var SpotifyModule = (function () {
       } else {
         var devices = data.devices;
         var sel = '';
+        var selId = '';
         for (var d in devices) {
-          $('select.devices').show();
-          $('a.change').show();
-
           sel = '';
           if (devices[d]['is_active']) {
             sel = 'selected';
+            selId = devices[d]['id'];
           }
           if (!devices[d]['is_restricted']) {
             if (
@@ -119,14 +152,15 @@ var SpotifyModule = (function () {
               );
             }
           }
+          me.$mountPoint.find('select.devices').val(selId)
         }
 
-        _getCurrentTrack();
+        _getCurrentTrack(me);
       }
     });
   }
 
-  function _createPlaylistsDlg(rand) {
+  function _createPlaylistsDlg(me) {
     spotifyApi.getUserPlaylists(function (err, playlists) {
       if (err) {
         infoMessage('Spotify getUserPlahylists error ' + err.status, 4000);
@@ -135,7 +169,7 @@ var SpotifyModule = (function () {
       }
       var html =
         '<div class="modal fade" id="spotify_' +
-        rand +
+        me.random +
         '" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">';
       html += '<div class="modal-dialog modal-spotify">';
       html += '<div class="modal-content">';
@@ -155,31 +189,18 @@ var SpotifyModule = (function () {
           html += '<div class="col-lg-3 col-md-4 col-sm-6">';
           html += '<div class="spotlist">';
           html +=
-            '<div class="col-xs-4" style="padding:0px;"><a onclick="SpotifyModule.getPlayList(\'' +
-            playlists.items[p]['owner']['id'] +
-            "','" +
-            playlists.items[p]['id'] +
-            '\');"><img src="' +
+            '<div class="col-xs-4" style="padding:0px;"><a playlistid="'+p+ '"><img src="' +
             playlists.items[p]['images'][0]['url'] +
             '" /></a></div>';
           html +=
             '<div class="col-xs-8 spotify-info" >';
           html +=
-            '<a onclick="SpotifyModule.getPlayList(\'' +
-            playlists.items[p]['owner']['id'] +
-            "','" +
-            playlists.items[p]['id'] +
-            '\');">' +
+            '<a playlistid="'+p+ '">' +
             playlists.items[p]['name'] +
             '</a><br />';
           html +=
-            '<a onclick="SpotifyModule.getTrackList(\'' +
-            playlists.items[p]['owner']['id'] +
-            "','" +
-            playlists.items[p]['id'] +
-            "','" +
-            columndiv +
-            '\');"><em>Tracks: ' +
+            '<a tracklistid="'+p+ '">' +
+            '<em>Tracks: ' +
             playlists.items[p]['tracks']['total'] +
             '</em></a></div>';
           html += '</div>';
@@ -194,112 +215,90 @@ var SpotifyModule = (function () {
       html += '</div>';
 
       $('body').append(html);
-      $('#spotify_' + rand).on('hidden.bs.modal', function () {
+
+      var modal = $('#spotify_' + me.random);
+
+      modal.on('click', '[playlistid]', function () {
+        var p = $(this).attr('playlistid');
+        console.log('playlistid', p);
+        _getPlayList(me, playlists.items[p]['owner']['id'], playlists.items[p]['id']);
+      });
+
+      modal.on('click', '[tracklistid]', function () {
+        var p = $(this).attr('tracklistid');
+        console.log('tracklistid', p);
+        _getTrackList(me, playlists.items[p]['owner']['id'], playlists.items[p]['id']);
+      });
+
+
+      modal.on('hidden.bs.modal', function () {
         $(this).data('bs.modal', null);
         console.log('destroyed spotframe');
       });
 
-      $('#spotify_' + rand).modal();
+      $('#spotify_' + me.random).modal();
     });
   }
 
-  function _getCurrentTrack() {
+  function _getCurrentTrack(me) {
     //		spotifyApi.getMyCurrentPlayingTrack(function(err, currently) {
     spotifyApi.getMyCurrentPlaybackState(function (err, currently) {
       if (currently.item !== null && typeof currently.item !== 'undefined') {
-        _getCurrentHTML(currently, 'currentlyPlaying');
+        _getCurrentHTML(me, currently);
       }
     });
   }
 
-  function _changeDevice(deviceID) {
-    var deviceIDs = [];
-    deviceIDs.push(deviceID);
-    spotifyApi.transferMyPlayback(deviceIDs, {}, function () {});
+  function _changeDevice(me, deviceID) {
+    var deviceIDs = [deviceID];
+    spotifyApi.transferMyPlayback(deviceIDs, {}, function (err, res) {
+//      console.log(err, res);
+    });
   }
-  function _getCurrentHTML(currently, typeAction) {
+  function _getCurrentHTML(me, currently) {
     var item = currently.item;
-    spotVolume = Number(currently.device.volume_percent);
-    if (typeof typeAction === 'undefined') typeAction = false;
+    me.spotVolume = Number(currently.device.volume_percent);
+
+    if(me.itemid!==item.id) {
+      var src = item.album?item.album.images[0].url:item.images[0].url;
+      me.$mountPoint.find('.current_image img').attr('src', src);
+      me.$mountPoint.find('.current_artist').html(item.artists[0].name || '');
+      me.$mountPoint.find('.current_track').html(item.name || '');
+      me.$mountPoint.find('.current_album').html(item.album.name || '');
+      me.itemid=item.id;
+    }
 
     var html = '';
-    if (typeof item.album !== 'undefined') {
-      html += '<div class="current_image">';
-      html += '<img src="' + item.album.images[0].url + '" />';
-      html += '</div>';
-    } else {
-      html += '<div class="current_image">';
-      html += '<img src="' + item.images[0].url + '" />';
-      html += '</div>';
-    }
-
-    html += '<div class="current_info">';
-
-    if (typeof item.artists !== 'undefined') {
-      html += '<div class="current_artist">';
-      html += item.artists[0].name;
-      html += '</div>';
-    }
-
-    if (typeof item.name !== 'undefined') {
-      html += '<div class="current_track">';
-      html += item.name;
-      html += '</div>';
-    }
-
-    if (typeof item.album !== 'undefined') {
-      html += '<div class="current_album">';
-      html += '<em>' + item.album.name + '</em>';
-      html += '</div>';
-    }
-
-    html += '<div>';
     if (userinfo.product !== 'premium') {
-      html +=
-        '<em>Playback functions of Spotify are only working when you have a premium subscription!</em>';
+        me.$mountPoint.find('.buttons').html('<em>Playback functions of Spotify are only working when you have a premium subscription!</em>');
     } else {
-      $('a.change').show();
-      $('select.devices').show();
+        if(!me.buttonsvisible) {
+          me.$mountPoint.find('a.change').show();
+          me.$mountPoint.find('select.devices').show();
+          me.$mountPoint.find('.buttons').show();
+          me.buttonsvisible=true; 
+        }
+        if (me.is_playing !== currently.is_playing) {
+          if (currently.is_playing) {
+            me.$mountPoint.find('a.spotpause').show();
+            me.$mountPoint.find('a.spotplay').hide();
+          } else {
+            me.$mountPoint.find('a.spotpause').hide();
+            me.$mountPoint.find('a.spotplay').show();
+          }
 
-      if (currently.is_playing) {
-        html +=
-          '<a class="spotpause" href="javascript:SpotifyModule.trackAction(\'Pause\');"><em class="fas fa-pause-circle fa-small"></em></a> ';
-        html +=
-          '<a class="spotplay" style="display:none;" href="javascript:SpotifyModule.trackAction(\'Play\');"><em class="fas fa-play-circle fa-small"></em></a> ';
-      } else {
-        html +=
-          '<a class="spotpause" style="display:none;" href="javascript:SpotifyModule.trackAction(\'Pause\');"><em class="fas fa-pause-circle fa-small"></em></a> ';
-        html +=
-          '<a class="spotplay" href="javascript:SpotifyModule.trackAction(\'Play\');"><em class="fas fa-play-circle fa-small"></em></a> ';
+          html += '&nbsp;&nbsp;';
+
+          me.shuffle_state = currently.shuffle_state;
+          if (currently.shuffle_state) 
+            me.$mountPoint.find('a.shuffle').removeClass('shuffleoff');
+          else
+            me.$mountPoint.find('a.shuffle').addClass('shuffleoff'); 
+        }
       }
-      html +=
-        '<a href="javascript:SpotifyModule.trackAction(\'Forward\');"><em class="fas fa-arrow-circle-right fa-small"></em></a>';
-
-      html += '&nbsp;&nbsp;';
-
-      if (currently.shuffle_state) {
-        html +=
-          '<a id="shuffle" href="javascript:SpotifyModule.trackAction(\'ShuffleOff\');"><em class="fas fa-random fa-small"></em></a> ';
-      } else {
-        html +=
-          '<a id="shuffle" class="shuffleoff" href="javascript:SpotifyModule.trackAction(\'ShuffleOn\');"><em class="fas fa-random fa-small"></em></a> ';
-      }
-      html += '&nbsp;&nbsp;';
-      html +=
-        '<a href="javascript:SpotifyModule.trackAction(\'VolumeDown\');"><em class="fas fa-minus-circle fa-small"></em></a>';
-      html += '&nbsp;';
-      html +=
-        '<a href="javascript:SpotifyModule.trackAction(\'VolumeUp\');"><em class="fas fa-plus-circle fa-small"></em></a>';
-
-      html += '</div>';
-    }
-
-    html += '</div>';
-
-    $('.containsspotify #current').html(html);
   }
 
-  function _trackAction(action) {
+  function _trackAction(me, action) {
     if (action == 'Play') {
       spotifyApi.play(function () {
         $('.spotpause').show();
@@ -314,39 +313,39 @@ var SpotifyModule = (function () {
     }
     if (action == 'Forward') {
       spotifyApi.skipToNext(function () {
-        _getCurrentTrack();
+        _getCurrentTrack(me);
       });
     }
     if (action == 'Rewind') {
       spotifyApi.skipToPrevious(function () {
-        _getCurrentTrack();
+        _getCurrentTrack(me);
       });
     }
     if (action == 'VolumeDown') {
-      spotVolume = Math.max(0, spotVolume - 10);
-      spotifyApi.setVolume(spotVolume, {});
+      me.spotVolume = Math.max(0, me.spotVolume - 10);
+      spotifyApi.setVolume(me.spotVolume, {});
     }
     if (action == 'VolumeUp') {
-      spotVolume = Math.min(100, spotVolume + 10);
-      spotifyApi.setVolume(spotVolume, {});
+      me.spotVolume = Math.min(100, me.spotVolume + 10);
+      spotifyApi.setVolume(me.spotVolume, {});
     }
-    if (action == 'ShuffleOn') {
+    if (action == 'ShuffleOn' || action == 'Shuffle' && !me.shuffle_state) {
       spotifyApi.setShuffle(true, {});
       $('#shuffle').removeClass('shuffleoff');
     }
-    if (action == 'ShuffleOff') {
+    if (action == 'ShuffleOff' || action == 'Shuffle' && me.shuffle_state) {
       spotifyApi.setShuffle(false, {});
       $('#shuffle').addClass('shuffleoff');
     }
   }
 
-  function _getPlayList(owner, id) {
+  function _getPlayList(me, owner, id) {
     spotifyApi.getPlaylist(id, null, function (err, playlist) {
       spotifyApi.play(
         {
           context_uri: playlist.uri,
         },
-        function () {
+        function (err, res) {
           $('.modal,.modal-backdrop').remove();
         }
       );
@@ -389,7 +388,7 @@ var SpotifyModule = (function () {
     $('div.modal-body .row.tracks').html('').hide();
   }
 
-  function _getTrackList(owner, id) {
+  function _getTrackList(me, owner, id) {
     spotifyApi.getPlaylist(id, null, function (err, tracks) {
       tracks = tracks.tracks;
 
@@ -436,6 +435,6 @@ var SpotifyModule = (function () {
 
 //Wrapper function to stay compatible with current module system
 // eslint-disable-next-line no-unused-vars
-function getSpotify(columndiv) {
-  return SpotifyModule.getSpotify(columndiv);
+function getSpotify(me, columndiv) {
+  return SpotifyModule.getSpotify(me, columndiv);
 }

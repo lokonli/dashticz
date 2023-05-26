@@ -117,14 +117,14 @@ var Dashticz = (function () {
       $div.removeClass(me.currentClass).addClass(addClass);
       me.currentClass = addClass; //store current class, so that we can remove it on next update.
     }
-    if (me.block.template === 1) $div.addClass('dt_column');
+    $div.addClass('dt_template'+choose(me.block.template,0));
     block
-      .find('.dt_state')
+      .find('.dt_content')
       .append(getProperty(components[me.name].defaultContent, me));
     $div.html(block);
     if (me.block.aspectratio) {
       var blockWidth = parseInt($div.outerWidth());
-      $div.css({height:blockWidth * me.block.aspectratio})
+      $div.css({height:blockWidth * me.block.aspectratio}).addClass('fixedheight');
     }
 
   }
@@ -236,16 +236,18 @@ var Dashticz = (function () {
   function getSpecialBlock(me) {
     var html = '';
     if (me.block.template === 1) {
-      html += '<div class="dt_content">';
+      html += '<div class="dt_row">';
       html += getColIcon(me);
       html += renderTitle(me);
       html += '</div>';
-      html += renderStateDiv(me);
+      html += renderContent(me);
+      html += renderInfo(me);
     } else {
       html += getColIcon(me);
-      html += '<div class="dt_content">';
+      html += '<div class="dt_col">';
       html += renderTitle(me);
-      html += renderStateDiv(me);
+      html += renderContent(me);
+      html += renderInfo(me);
       html += '</div>';
     }
     return html;
@@ -255,13 +257,13 @@ var Dashticz = (function () {
     var icon = me.block.icon;
     var html = '';
     if (icon) {
-      html += '<div class="col-icon">';
+      html += '<div class="dt_icon">';
       html += '<em class="' + icon + '"></em>';
       html += '</div>';
     }
     var image = me.block.image;
     if (image) {
-      html += '<div class="col-icon">';
+      html += '<div class="dt_icon">';
       html += '<img src="img/' + image + '" class="icon"/>';
       html += '</div>';
     }
@@ -275,8 +277,12 @@ var Dashticz = (function () {
     } else return '';
   }
 
-  function renderStateDiv() {
-    return '<div class="dt_state"></div>';
+  function renderContent() {
+    return '<div class="dt_content"></div>';
+  }
+
+  function renderInfo() {
+    return '<div class="dt_info"></div>';
   }
 
   function getProperty(fn, me) {

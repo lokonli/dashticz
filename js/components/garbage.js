@@ -6,34 +6,35 @@ var DT_garbage = (function () {
     canHandle: function (block) {
       return block && (block.company || (block.city && ((block.zipcode && block.housenumber) || block.district)));
     },
-    defaultCfg: {
-      width: settings['garbage_width'] || 12,
-      hideicon:
-        typeof settings['garbage_hideicon'] !== 'undefined'
-          ? settings['garbage_hideicon']
-          : false,
-      company: settings['garbage_company'] || 'afvalinfo',
-      street: settings['garbage_street'] || '',
-      housenumber: settings['garbage_housenumber'] || '',
-      housenumberSuffix: settings['garbage_housenumberadd'] || '',
-      zipcode: settings['garbage_zipcode'] || '',
-      maxitems: settings['garbage_maxitems'] || 5,
-      calendar_id: settings['garbage_calendar_id'],
-      icalurl: settings['garbage_icalurl'],
-      refresh: 4 * 3600,
-      clickHandler: true,
-      containerClass: 'trash',
-      garbage: settings['garbage'],
-      use_cors_prefix: settings['garbage_use_cors_prefix'],
-      use_colors: settings['garbage_use_colors'],
-      icon_use_colors: settings['garbage_icon_use_colors'],
-      use_names: settings['garbage_use_names'],
-      mapping: settings['garbage_mapping'],
-      date_separator: ': ',
-      layout: 1,
-      maxdays: 32,
-      ignoressl: false,
-      defaultGarbage: 'kerstboom'
+    defaultCfg: function(block) {
+      var hideicon = choose(settings.garbage_hideicon, false);
+      return{
+        width: settings['garbage_width'] || 12,
+        hideicon: hideicon,
+        image: hideicon ? '' : '/garbage/kliko.png',
+        company: settings['garbage_company'] || 'afvalinfo',
+        street: settings['garbage_street'] || '',
+        housenumber: settings['garbage_housenumber'] || '',
+        housenumberSuffix: settings['garbage_housenumberadd'] || '',
+        zipcode: settings['garbage_zipcode'] || '',
+        maxitems: settings['garbage_maxitems'] || 5,
+        calendar_id: settings['garbage_calendar_id'],
+        icalurl: settings['garbage_icalurl'],
+        refresh: 4 * 3600,
+        clickHandler: true,
+        containerClass: 'trash',
+        garbage: settings['garbage'],
+        use_cors_prefix: settings['garbage_use_cors_prefix'],
+        use_colors: settings['garbage_use_colors'],
+        icon_use_colors: settings['garbage_icon_use_colors'],
+        use_names: settings['garbage_use_names'],
+        mapping: settings['garbage_mapping'],
+        date_separator: ': ',
+        layout: 1,
+        maxdays: 32,
+        ignoressl: false,
+        defaultGarbage: 'kerstboom'
+      }
     },
     run: function (me) {
       me.order = Object.keys(me.block.garbage);
@@ -53,19 +54,7 @@ var DT_garbage = (function () {
   };
 
   function renderTemplate(me) {
-    var html = '';
-    if (me.block.hideicon) {
-      html += '<div class="col-xs-12 col-data state">';
-    } else {
-      html += '<div class="col-xs-4 col-icon">';
-      html +=
-        '<img class="trashcan" src="img/garbage/kliko.png" style="opacity:0.1" />';
-      html += '</div>';
-      html += '<div class="col-xs-8 col-data state">';
-    }
-    html += language.misc.loading;
-    html += '</div>';
-    $(me.mountPoint + ' .dt_state').html(html);
+    $(me.mountPoint + ' .dt_content').html(language.misc.loading);
   }
 
   function getPrefixUrl(me) {
@@ -652,8 +641,8 @@ SENSOR_LOCATIONS_TO_URL = {
 
   function addToContainer(me, returnDates) {
     var $div = me.$mountPoint;
-    var $divState = $div.find('.state');
-    var $divImg = $div.find('img.trashcan');
+    var $divState = $div.find('.dt_content');
+    var $divImg = $div.find('.icon');
     returnDates = filterReturnDates(me, returnDates);
     if (!returnDates.length) {
       $divState.html('Geen gegevens gevonden');
