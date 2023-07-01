@@ -38,6 +38,7 @@ Dashticz.register(DT_graph);
 /** Initialization of the Graph object */
 function Initialize(me) {
   me.graphDevices = [];
+  me.ysyncmax={};
   me.block.devices = me.block.devices || [parseInt(me.key.split('_')[1])];
   $.each(me.block.devices, function (i, idx) {
     var device = {};
@@ -110,13 +111,13 @@ function getBlockDefaults() {
     format: true,
     gradients: false,
     graph: 'line',
-    graphTypes: false,
+//    graphTypes: false,
     groupBy: false,
     groupByDevice: false,
     height: false,
     iconColour: 'grey',
     interval: 1,
-    legend: false,
+    legend: true,
     lineFill: false,
     lineTension: 0.1,
     maxTicksLimit: null,
@@ -129,12 +130,13 @@ function getBlockDefaults() {
     refresh: 300,
     reverseTime: false,
     sortDevices: false,
-    spanGaps: false,
+    spanGaps: true,
     stacked: false,
     title: false,
     tooltiptotal: false,
     width: 12,
     zoom: false,
+    ysyncmargin: 3
   };
   return block;
 }
@@ -198,6 +200,7 @@ function getDeviceDefaults(me, device) {
       currentValue = device['CounterToday'].split(' ')[0];
       switch (device['SwitchTypeVal']) {
         case 0: //Energy
+          me.ysyncmax=['Wh','kWh'];
           break;
         case 1: //Gas
           break;
@@ -243,6 +246,7 @@ function getDeviceDefaults(me, device) {
     case 'YouLess counter':
       txtUnit = device.SwitchTypeVal==1 ? 'm3':'kWh'; //SwitchTypeVal 0: Electra; 1: Gas
       currentValue = device['CounterToday'];
+      if(txtUnit === 'kWh') me.ysyncmax=['Wh','kWh'];
       break;
     case 'Managed Counter':
       txtUnit = 'kWh';
@@ -385,8 +389,7 @@ function refreshGraph(me) {
 function prepareGraphData(me) {
   var isInitial = me.range === 'initial';
   me.txtUnits = []; //todo: check txtUnits
-  me.data = [];
-
+//  me.ysyncmax = ['Wh','kWh'];
   me.lastRefreshTime = time();
   //  txtUnits.push(me.txtUnit);
 
@@ -473,6 +476,28 @@ function prepareGraphData(me) {
       );
     }
   }
+    //Some block properties can be "overruled" by custom block settings
+  //However, getDefaultGraphProperties now depend on some block settings, without taking custom block settings into account
+  //I don't want to overwrite graph.block, because that contains the original block definition
+  //Let's create a second parameter, containing the merged block
+  var mergedBlock = $.extend(true, {}, me.block, me.graphConfig);
+
+  var graphProperties = getDefaultGraphProperties(me, mergedBlock);
+  $.extend(true, graphProperties, mergedBlock);
+
+  if (me.graphConfig) {
+    $.extend(true, me, me.graphConfig);
+  }
+
+  if (typeof mergedBlock.legend == 'boolean') {
+    graphProperties.options.legend.display = mergedBlock.legend;
+  }
+
+  me.mergedBlock=mergedBlock;
+  me.graphProperties = graphProperties;
+
+  me.data = [];
+
 }
 
 function getAllGraphData(me) {
@@ -578,28 +603,30 @@ function formatData(me) {
   me.ylabels = [];
   me.txtUnits = []; //todo: check where txtUnits still is used
   //iterate through all data sets
+  var props=me.graphProperties;
   $.each(me.data, function (z, d) {
     var currentKey = '';
+    d.ylabels = [];
+    d.keys = [];
 
     if (d.result && d.result.length > 0) {
-      $.each(d.result, function (x, res) {
+        $.each(d.result, function (x, res) {
         var valid = false;
         var interval = 1;
-        d.ylabels = [];
-        d.keys = [];
         if (me.hasBlock)
           interval =
-            me.range === 'last' || me.range === 'month' ? 1 : me.block.interval;
+            me.range === 'last' || me.range === 'month' ? 1 : props.interval;
 
         if (x % interval === 0) {
           var sampleDate = res['d'];
+//          if(res.eu) sampleDate=moment(sampleDate).add(30,'minutes').format("YYYY-MM-DD HH:mm");
           if (sampleDate) {
             var obj = tmpResults[sampleDate] || { d: sampleDate }; //if sampleDate already exists use that one, otherwise create new one
             for (var key in res) {
               var mayAdd =
-                key !== 'd' && (key !== 'c' || me.block.graphTypes || me.block.legend ) &&
-                (me.block.graphTypes
-                  ? $.inArray(key, me.block.graphTypes) >= 0
+                key !== 'd' && (keyNoCounter(key) || props.graphTypes || (typeof props.legend==='object') ) &&
+                (props.graphTypes
+                  ? $.inArray(key, props.graphTypes) >= 0
                   : true);
               if (mayAdd) {
                 if (!d.keys.includes(key)) {
@@ -625,8 +652,22 @@ function formatData(me) {
       d.ylabels.forEach(function (lbl) {
         me.ylabels.push(lbl);
       });
+      if(d.ysyncmax) me.ysyncmax = d.ysyncmax
     }
   });
+
+  function is_numeric(c) {
+    return !isNaN(parseInt(c, 10));
+  }
+
+  function keyNoCounter(key) {
+    if(key==='c') return false;
+    var len=key.length;
+    if(len==2) {
+      if (key[0]==='c' && is_numeric(key[1])) return false;
+    }
+    return true;    
+  }
 
   /*now transform tmpResults object into array*/
 
@@ -768,22 +809,6 @@ function groupLabels(graph, labels) {
 }
 
 function createGraph(graph) {
-  //Some block properties can be "overruled" by custom block settings
-  //However, getDefaultGraphProperties now depend on some block settings, without taking custom block settings into account
-  //I don't want to overwrite graph.block, because that contains the original block definition
-  //Let's create a second parameter, containing the merged block
-  var mergedBlock = $.extend(true, {}, graph.block, graph.graphConfig);
-
-  var graphProperties = getDefaultGraphProperties(graph, mergedBlock);
-  $.extend(true, graphProperties, mergedBlock);
-
-  if (graph.graphConfig) {
-    $.extend(true, graph, graph.graphConfig);
-  }
-
-  if (typeof mergedBlock.legend == 'boolean') {
-    graphProperties.options.legend.display = mergedBlock.legend;
-  }
 
   if (graph.dataFilterCount > 0) filterGraphData(graph);
 
@@ -791,11 +816,14 @@ function createGraph(graph) {
 
   if (graph.graphConfig) createCustomData(graph);
 
-  if (graphProperties.ylabels) graph.ylabels = graphProperties.ylabels;
+  if (graph.graphProperties.ylabels) graph.ylabels = graphProperties.ylabels;
 
-  createDataSets(graph, mergedBlock, graphProperties);
+  createDataSets(graph);
 
-  createYAxes(graph, mergedBlock, graphProperties);
+  createYAxes(graph);
+
+  var mergedBlock = graph.mergedBlock;
+  var graphProperties = graph.graphProperties;
 
   if (isDefined(mergedBlock.legend)) {
     if ($.isArray(mergedBlock.legend)) {
@@ -811,7 +839,8 @@ function createGraph(graph) {
       break;
     case 'object':
       mergedBlock.graph.forEach(function (element, idx) {
-        graphProperties.data.datasets[idx].type = element;
+        if(idx<graphProperties.data.datasets.length)
+          graphProperties.data.datasets[idx].type = element;
       });
       graphProperties.type = 'bar';
       break;
@@ -859,7 +888,11 @@ function createGraph(graph) {
 }
 
 //create the y-axes, ylabels contains the labels
-function createYAxes(graph, mergedBlock, graphProperties) {
+function createYAxes(graph) {
+  var mergedBlock = graph.mergedBlock;
+  var graphProperties = graph.graphProperties;
+  graph.yaxes=[];
+  graph.ymax = -10000;
   var uniqueylabels = graph.ylabels.filter(onlyUnique);
   var labelLeft = !mergedBlock.axisRight;
   var axisCount = graphProperties.options && graphProperties.options.scales && graphProperties.options.scales.yAxes
@@ -886,6 +919,49 @@ function createYAxes(graph, mergedBlock, graphProperties) {
         fontColor: graph.block.fontColor,
       },
       position: labelLeft ? 'left' : 'right',
+      afterDataLimits: function(axis) {
+        axis.min = 0;
+        console.log(axis);
+      
+        graph.yaxes.forEach(function(yaxis) {
+          var min, start;
+          if(axis.max>=yaxis.max && axis.max <= yaxis.max*(1+mergedBlock.ysyncmargin)) {
+            min=Math.min(axis.min, yaxis.min);
+
+            console.log('sync ', yaxis.max, axis.max, yaxis.min, axis.min)
+            yaxis.max = axis.max;
+            yaxis.min = min;
+            axis.min = min;
+            start=Math.min(axis.start, yaxis.start);
+            yaxis.start = start;
+            axis.start = start;
+          }
+          else 
+          if(yaxis.max>=axis.max && yaxis.max <= axis.max*(1+mergedBlock.ysyncmargin)) {
+            min=Math.min(axis.min, yaxis.min);
+            console.log('sync ', yaxis.max, axis.max, yaxis.min, axis.min)
+            axis.max = yaxis.max;
+            yaxis.min = min;
+            axis.min = min;
+            start=Math.min(axis.start, yaxis.start);
+            yaxis.start = start;
+            axis.start = start;
+          }
+
+        });
+        
+        graph.yaxes.push(axis);
+/*        if(graph.ysyncmax.includes(axis.id))
+          if (graph.ymax<axis.max) {
+            graph.ymax = axis.max;
+            graph.yaxes.forEach(function(yaxis) {
+              yaxis.max = graph.ymax
+            });
+          }
+          else
+            axis.max = graph.ymax*/
+        
+      }
     };
     graphProperties.options.scales.yAxes.push(yaxis);
     if (i < axisCount)
@@ -960,12 +1036,12 @@ function applyGradients(mergedBlock, graphProperties) {
 function filterGraphData(graph) {
   var startMoment =
     graph.dataFilterUnit === 'today'
-      ? moment().format('YYYY-MM-DD 00:01')
+      ? moment().format('YYYY-MM-DD 00:00')
       : moment()
           .subtract(graph.dataFilterCount, graph.dataFilterUnit)
           .format('YYYY-MM-DD HH:mm');
   graph.data.result = graph.data.result.filter(function (element) {
-    return element.d > startMoment;
+    return element.d >= startMoment;
   });
 }
 
@@ -1015,7 +1091,7 @@ function graphRender(graph, graphProperties) {
       $('.' + graphIdx + ' .graphcontent').css('height', height);
     //console.log('test');
   }
-
+//  graphProperties.data.labels=undefined;
   new Chart(graph.chartctx, graphProperties);
   Chart.defaults.global.defaultFontColor = graph.block.fontColor;
 }
@@ -1065,15 +1141,17 @@ function createCustomData(graph) {
   graph.data.result = customResult;
 }
 
-function createDataSets(graph, mergedBlock, graphProperties) {
+function createDataSets(graph) {
   //first determine the correct labels for the y-axes
   //we want to create a mapping of ykeys value to index
+  var block=graph.mergedBlock;
+  var legend=block.legend;
   var idxArray = [];
   var labelMapping = {};
 
-  var hasLegend = typeof mergedBlock.legend === 'object';
+  var hasLegend = typeof legend === 'object';
   if (hasLegend) {
-    idxArray = Object.keys(mergedBlock.legend);
+    idxArray = Object.keys(legend);
   } else {
     idxArray = graph.ykeys;
   }
@@ -1098,28 +1176,32 @@ function createDataSets(graph, mergedBlock, graphProperties) {
     mydatasets[element] = {
       data: [],
       label: element,
-      yAxisID: mergedBlock.ylabels
-        ? mergedBlock.ylabels[idx]
-        : graph.ylabels[index], //check: idx iso index
-      backgroundColor: mergedBlock.datasetColors[idx],
-      barPercentage: mergedBlock.barWidth,
-      borderColor: (mergedBlock.borderColors || mergedBlock.datasetColors)[idx],
-      borderWidth: mergedBlock.borderWidth,
-      borderDash: mergedBlock.borderDash,
-      pointRadius: mergedBlock.pointRadius,
-      pointStyle: mergedBlock.pointStyle[idx], //check: index iso idx
-      pointBackgroundColor: (mergedBlock.pointFillColor ||
-        mergedBlock.datasetColors)[idx],
-      pointBorderColor: (mergedBlock.pointBorderColor ||
-        mergedBlock.datasetColors)[idx],
-      pointBorderWidth: mergedBlock.pointBorderWidth,
-      lineTension: mergedBlock.lineTension,
-      spanGaps: mergedBlock.spanGaps,
-      fill: getProperty(mergedBlock.lineFill, idx),
+//      xAxisID: index,
+      yAxisID: block.ylabels
+        ? block.ylabels[idx]
+        : graph.ylabels[idx], //check: idx iso index
+      backgroundColor: block.datasetColors[idx],
+      barPercentage: block.barWidth,
+      borderColor: (block.borderColors || block.datasetColors)[idx],
+      borderWidth: block.borderWidth,
+      borderDash: block.borderDash,
+      pointRadius: block.pointRadius,
+      pointStyle: block.pointStyle[idx], //check: index iso idx
+      pointBackgroundColor: (block.pointFillColor ||
+        block.datasetColors)[idx],
+      pointBorderColor: (block.pointBorderColor ||
+        block.datasetColors)[idx],
+      pointBorderWidth: block.pointBorderWidth,
+      lineTension: block.lineTension,
+      spanGaps: block.spanGaps,
+      fill: getProperty(block.lineFill, idx),
       steppedLine: getProperty(
-        defaultSteppedLine || mergedBlock.steppedLine,
+        defaultSteppedLine || block.steppedLine,
         idx
       ),
+      barThickness: 'flex',
+      barPercentage: 0.95,
+      categoryPercentage: 1
     };
   });
 
@@ -1134,7 +1216,7 @@ function createDataSets(graph, mergedBlock, graphProperties) {
         });
       }
     });
-    if (valid) graphProperties.data.labels.push(element.d);
+    if (valid) graph.graphProperties.data.labels.push(element.d);
   });
 
   //Now we have the datasets
@@ -1147,14 +1229,14 @@ function createDataSets(graph, mergedBlock, graphProperties) {
         graph,
         idx,
         dataset.data,
-        graphProperties.data.labels
+        graph.graphProperties.data.labels
       );
       idx += 1;
     });
     //group the labels
-    graphProperties.data.labels = groupLabels(
+    graph.graphProperties.data.labels = groupLabels(
       graph,
-      graphProperties.data.labels
+      graph.graphProperties.data.labels
     );
   }
 
@@ -1207,12 +1289,12 @@ function createDataSets(graph, mergedBlock, graphProperties) {
   }
 
   Object.keys(mydatasets).forEach(function (element) {
-    if (typeof mergedBlock.legend == 'object') {
-      if (isDefined(mergedBlock.legend[element]))
-        mydatasets[element].label = mergedBlock.legend[element];
-      graphProperties.options.legend.display = true;
+    if (typeof legend == 'object') {
+      if (isDefined(legend[element]))
+        mydatasets[element].label = legend[element];
+      graph.graphProperties.options.legend.display = true;
     }
-    graphProperties.data.datasets.push(mydatasets[element]);
+    graph.graphProperties.data.datasets.push(mydatasets[element]);
   });
 }
 
@@ -1633,8 +1715,133 @@ Handlebars.registerHelper('splitString', function (str, cha, options) {
   return options.fn(str[0].split(cha)[0]);
 });
 
+function customTooltip(graph, block, tooltip) {
+  var tooltipEl = $('#' + graph.graphIdx + '_chartjs-tooltip');
+  var minWidth = graph.range !== 'day' ? 100 : 135;
+
+  if (tooltipEl.length === 0 && !graph.loadingTooltip) {
+    graph.loadingTooltip = true;
+    templateEngine
+      .load('graph_tooltip_table')
+      .then(function (template) {
+        $('#graphoutput_' + graph.graphIdx)
+          .parent()
+          .append(
+            template({
+              idx: graph.graphIdx,
+              minw: minWidth,
+            })
+          );
+        graph.loadingTooltip = false;
+      });
+  }
+
+  if (tooltip.opacity === 0) {
+    tooltipEl.css({
+      opacity: 0,
+    });
+    return;
+  }
+
+  tooltipEl.removeClass('left right');
+  if (tooltip.yAlign)
+    tooltipEl
+      .removeClass('left right center bottom')
+      .addClass(tooltip.xAlign)
+      .addClass(tooltip.yAlign);
+
+  function getBody(bodyItem) {
+    return bodyItem.lines;
+  }
+
+  if (tooltip.body) {
+    var isdate = moment(tooltip.title, 'YYYY-MM-DD').isValid();
+    var dformat =
+      graph.range === 'day' || graph.range === 'last'
+        ? 'HH:mm, DD/MM/YYYY'
+        : 'DD/MM/YYYY';
+    var bodyLines = tooltip.body.map(getBody);
+    var vals = [];
+    var total = 0;
+
+    //  Tooltip title with SetPoint info when using GroupByDevice
+    if (graph.hasSetPoint) {
+      var value = graph.currentValues[tooltip.dataPoints[0].index];
+      var status = value.split(',')[2].trim();
+      var s = status.split(' ');
+      if (s.length === 3) {
+        var until = moment(s[2]).format('hh:mm a');
+        tooltip.title[0] = language.evohome[s[0]] + ' > ' + until;
+      } else {
+        tooltip.title[0] = language.evohome[status];
+      }
+    }
+
+    var decimals = graph.decimals;
+    if (typeof block.decimals !== 'undefined')
+      decimals = block.decimals;
+    bodyLines.forEach(function (body, i) {
+      var val = parseFloat(body[0]);
+      //todo: next line throws an error. As workaround I've added previous line and the try/catch.
+      try {
+        val = parseFloat(body[0].split(':')[1].replace('NaN', '0'));
+      } catch (err) {
+        console.log('error in tooltip');
+      }
+      var obj = {};
+      obj.key = body[0].split(':')[0];
+      obj.val = number_format(val, decimals);
+      obj.add =
+        block.tooltiptotal === true ||
+        $.inArray(obj.key, block.tooltiptotal) !== -1;
+      obj.col = tooltip.labelColors[i].backgroundColor;
+      obj.fas = 'plus';
+
+      if (obj.add) total += val;
+      vals.push(obj);
+    });
+
+    if (total > 0) {
+      vals.push({
+        key: 'Total',
+        val: number_format(total, block.decimals),
+        col: 'white',
+        fas: 'equals',
+      });
+    }
+
+    var positionY = this._chart.canvas.offsetTop;
+    var positionX = this._chart.canvas.offsetLeft;
+
+    templateEngine.load('graph_tooltip').then(function (template) {
+      var data = {
+        icon: graph.block.buttonsIcon,
+        colors: tooltip.labelColors,
+        tlines: tooltip.title || [],
+        range: graph.range,
+        vals: vals,
+        isdate: isdate,
+        fmt: dformat,
+      };
+
+      tooltipEl.find('table').html(template(data));
+    });
+  }
+
+  tooltipEl.css({
+    opacity: 1,
+    minWidth: minWidth,
+    left: positionX + tooltip.caretX + 'px',
+    top: positionY + tooltip.caretY + 'px',
+    fontFamily: tooltip._bodyFontFamily,
+    fontSize: tooltip.bodyFontSize + 'px',
+    fontStyle: tooltip._bodyFontStyle,
+    xOffset: tooltip.xOffset,
+  });
+}
+
 function getDefaultGraphProperties(graph, block) {
-  return {
+  var defaultGraph = {
     type: 'line',
     data: {
       labels: [],
@@ -1646,130 +1853,9 @@ function getDefaultGraphProperties(graph, block) {
         mode: 'index',
         intersect: false,
         enabled: false,
-        custom: function (tooltip) {
-          var tooltipEl = $('#' + graph.graphIdx + '_chartjs-tooltip');
-          var minWidth = graph.range !== 'day' ? 100 : 135;
-
-          if (tooltipEl.length === 0 && !graph.loadingTooltip) {
-            graph.loadingTooltip = true;
-            templateEngine
-              .load('graph_tooltip_table')
-              .then(function (template) {
-                $('#graphoutput_' + graph.graphIdx)
-                  .parent()
-                  .append(
-                    template({
-                      idx: graph.graphIdx,
-                      minw: minWidth,
-                    })
-                  );
-                graph.loadingTooltip = false;
-              });
-          }
-
-          if (tooltip.opacity === 0) {
-            tooltipEl.css({
-              opacity: 0,
-            });
-            return;
-          }
-
-          tooltipEl.removeClass('left right');
-          if (tooltip.yAlign)
-            tooltipEl
-              .removeClass('left right center bottom')
-              .addClass(tooltip.xAlign)
-              .addClass(tooltip.yAlign);
-
-          function getBody(bodyItem) {
-            return bodyItem.lines;
-          }
-
-          if (tooltip.body) {
-            var isdate = moment(tooltip.title, 'YYYY-MM-DD').isValid();
-            var dformat =
-              graph.range === 'day' || graph.range === 'last'
-                ? 'HH:mm, DD/MM/YYYY'
-                : 'DD/MM/YYYY';
-            var bodyLines = tooltip.body.map(getBody);
-            var vals = [];
-            var total = 0;
-
-            //  Tooltip title with SetPoint info when using GroupByDevice
-            if (graph.hasSetPoint) {
-              var value = graph.currentValues[tooltip.dataPoints[0].index];
-              var status = value.split(',')[2].trim();
-              var s = status.split(' ');
-              if (s.length === 3) {
-                var until = moment(s[2]).format('hh:mm a');
-                tooltip.title[0] = language.evohome[s[0]] + ' > ' + until;
-              } else {
-                tooltip.title[0] = language.evohome[status];
-              }
-            }
-
-            var decimals = graph.decimals;
-            if (typeof block.decimals !== 'undefined')
-              decimals = block.decimals;
-            bodyLines.forEach(function (body, i) {
-              var val = parseFloat(body[0]);
-              //todo: next line throws an error. As workaround I've added previous line and the try/catch.
-              try {
-                val = parseFloat(body[0].split(':')[1].replace('NaN', '0'));
-              } catch (err) {
-                console.log('error in tooltip');
-              }
-              var obj = {};
-              obj.key = body[0].split(':')[0];
-              obj.val = number_format(val, decimals);
-              obj.add =
-                block.tooltiptotal === true ||
-                $.inArray(obj.key, block.tooltiptotal) !== -1;
-              obj.col = tooltip.labelColors[i].backgroundColor;
-              obj.fas = 'plus';
-
-              if (obj.add) total += val;
-              vals.push(obj);
-            });
-
-            if (total > 0) {
-              vals.push({
-                key: 'Total',
-                val: number_format(total, block.decimals),
-                col: 'white',
-                fas: 'equals',
-              });
-            }
-
-            var positionY = this._chart.canvas.offsetTop;
-            var positionX = this._chart.canvas.offsetLeft;
-
-            templateEngine.load('graph_tooltip').then(function (template) {
-              var data = {
-                icon: graph.block.buttonsIcon,
-                colors: tooltip.labelColors,
-                tlines: tooltip.title || [],
-                range: graph.range,
-                vals: vals,
-                isdate: isdate,
-                fmt: dformat,
-              };
-
-              tooltipEl.find('table').html(template(data));
-            });
-          }
-
-          tooltipEl.css({
-            opacity: 1,
-            minWidth: minWidth,
-            left: positionX + tooltip.caretX + 'px',
-            top: positionY + tooltip.caretY + 'px',
-            fontFamily: tooltip._bodyFontFamily,
-            fontSize: tooltip.bodyFontSize + 'px',
-            fontStyle: tooltip._bodyFontStyle,
-            xOffset: tooltip.xOffset,
-          });
-        },
+        custom: function(tooltip) {
+          return customTooltip.call(this,graph, block, tooltip)
+        }
       },
       layout: {
         padding: {
@@ -1800,6 +1886,7 @@ function getDefaultGraphProperties(graph, block) {
         ],
         xAxes: [
           {
+//            id: 0,
             stacked: block.stacked,
             offset: true,
             ticks: {
@@ -1845,6 +1932,26 @@ function getDefaultGraphProperties(graph, block) {
       },
     },
   };
+
+  var device = graph.graphDevices[0];
+  switch(true) {
+    case device.Type==='P1 Smart Meter': 
+      defaultGraph=getDefaultGraphP1(graph, defaultGraph);
+    break;
+  }
+  return defaultGraph;
+}
+
+function getDefaultGraphP1(graph, defaultGraph) {
+  if(graph.graphConfig) return defaultGraph;
+  graph.graphConfig = {
+      data: {
+        nett: 'd.v_43 + d.v2_43'
+      }
+  }
+
+  return defaultGraph;
+  
 }
 
 function getYlabels(g) {
@@ -1855,7 +1962,6 @@ function getYlabels(g) {
     switch (key) {
       case 'v':
       case 'v2':
-      case 'eu':
       case 'r1':
       case 'r2':
       case 'c':
@@ -1879,7 +1985,12 @@ function getYlabels(g) {
           l.push(label);
         }
         break;
-      case 'lux':
+        case 'eu':
+        case 'eg':
+          l.push('Wh');
+          break;
+
+        case 'lux':
         l.push('Lux');
         break;
       case 'lux_avg':
