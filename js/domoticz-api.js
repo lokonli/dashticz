@@ -829,6 +829,13 @@ var Domoticz = (function () {
       api15330: {
         version: 2023.1,
         build: 15327
+      },
+      {
+        graphv1: {
+          version: 2023.6,
+          build: 15433
+        },
+        
       }
     }
 

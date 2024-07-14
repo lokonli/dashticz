@@ -2198,8 +2198,8 @@ function createDefaultGraphP1Energy(me) {
     range: 'day',
     filter: '4 hours',
     data: {
-      nett: 'd.v+d.v2-d.r1-d.r2',
-      usage: 'd.v+d.v2',
+      nett: 'd.v1+d.v2-d.r1-d.r2',
+      usage: 'd.v1+d.v2',
       generation: '-d.r1-d.r2'
     },
     datasets: {
@@ -2213,8 +2213,8 @@ function createDefaultGraphP1Energy(me) {
     range: 'today',
     showAllDatasets: false,
     datasets: {
-      nett: { yLabel: 'Watt', data: 'd.v+d.v2-d.r1-d.r2' },
-      usage: { yLabel: 'Watt', graph: 'bar', data: 'd.v+d.v2'},
+      nett: { yLabel: 'Watt', data: 'd.v1+d.v2-d.r1-d.r2' },
+      usage: { yLabel: 'Watt', graph: 'bar', data: 'd.v1+d.v2'},
       generation: { yLabel: 'Watt', graph: 'bar', data: '-d.r1-d.r2' },
     },
   };
@@ -2223,8 +2223,8 @@ function createDefaultGraphP1Energy(me) {
     range: 'year',
     filter: '1 month',
     data: {
-      nett: 'd.v+d.v2-d.r1-d.r2',
-      usage: 'd.v+d.v2',
+      nett: 'd.v1+d.v2-d.r1-d.r2',
+      usage: 'd.v1+d.v2',
       generation: '-d.r1-d.r2'
     },
     datasets: {
