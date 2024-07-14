@@ -21,6 +21,12 @@ Same as v3.12.1 beta
 V3.12.1 beta (14-7-2024)
 ---------------------------
 
+Test (V3.12.1 beta) (18-2-2024)
+---------------------------
+A lot of changes for the Dashticz charts.
+
+See :ref:`v3_12_1`
+
 Enhancements
 ~~~~~~~~~~~~
 
