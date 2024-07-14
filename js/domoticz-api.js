@@ -830,13 +830,10 @@ var Domoticz = (function () {
         version: 2023.1,
         build: 15327
       },
-      {
-        graphv1: {
+      graphv1: {
           version: 2023.6,
           build: 15433
-        },
-        
-      }
+      },
     }
 
     Object.keys(domoChanges).forEach(function (key) {
